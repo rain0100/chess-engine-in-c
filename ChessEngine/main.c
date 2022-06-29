@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define len(x)  (sizeof(x) / sizeof((x)[0]))
 
@@ -27,7 +28,6 @@ unsigned long long black_pieces = 0ULL;
 
 unsigned long long empty = 0ULL;
 unsigned long long occupied = 0ULL;
-
 unsigned long long file[9] = {0ULL};
 unsigned long long rank[9] = {0ULL};
 unsigned long long l_diag[15] = {0ULL};
@@ -62,6 +62,10 @@ int king_num_moves[] = {0, 0};
 int board[64] = {0};
 int pieces[13][9];
 int num_pieces_of_type[13] = {0};
+
+int piece_letter_to_num[127] = {0};
+
+char *start_position = "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w";
 
 unsigned long long generate_bitboard(int squares[], int num_squares){
     unsigned long long a = 0ULL;
@@ -121,6 +125,64 @@ void init_bitboards(){
         bitboards[i] = (bitboards[i - 6] << diff);
     }
 }
+
+
+void init_fen(char *fen, size_t fen_length){
+    piece_letter_to_num['P'] = 1;
+    piece_letter_to_num['N'] = 2;
+    piece_letter_to_num['B'] = 3;
+    piece_letter_to_num['R'] = 4;
+    piece_letter_to_num['Q'] = 5;
+    piece_letter_to_num['K'] = 6;
+    piece_letter_to_num['p'] = 7;
+    piece_letter_to_num['n'] = 8;
+    piece_letter_to_num['b'] = 9;
+    piece_letter_to_num['r'] = 10;
+    piece_letter_to_num['q'] = 11;
+    piece_letter_to_num['k'] = 12;
+    int square = 63;
+    char current = '_';
+    int p = 0;
+    int i = 0;
+    for(; i < fen_length; i++){
+        current = fen[i];
+        //this is a number
+        if(current >= 48 && current <= 57){
+            square -= (current - 48);
+        }
+        else if(current == '/'){
+            continue;
+        }
+        //found a space, done placing pieces
+        else if(current == ' '){
+            i++;
+            break;
+        }
+        //placing a piece
+        else{
+            p = piece_letter_to_num[current];
+            board[square] = p;
+            bitboards[p] |= (1ULL << square);
+            pieces[p][num_pieces_of_type[p]] = square;
+            num_pieces_of_type[p]++;
+            square -= 1;
+        }
+    }
+    current = fen[i];
+    if(current == 'b'){
+        white_turn = false;
+    }
+    else{
+        white_turn = true;
+    }
+    i+= 2;
+
+    /*for(; i < fen_length; i++){
+        current = fen[i];
+        printf("current %c\n", current);
+    }*/
+}
+
 
 void append_move(struct Move* arr, struct Move m, int *i){
     arr[*i] = m;
@@ -821,7 +883,9 @@ void print_bitboard(unsigned long long bitboard){
 }
 
 void init_board(){
-    init_bitboards();
+    //init_bitboards();
+    int a = strlen(start_position);
+    init_fen(start_position, a);
     init_masks();
 }
 
@@ -1199,8 +1263,8 @@ void run_game(){
 }
 
 int main(){
-    run_game();
-    //test(5);
+    //run_game();
+    test(4);
     /*struct Move* pItems = (struct Move*)calloc(256, sizeof(struct Move));
     int numElems = 0;
     struct Move move;
