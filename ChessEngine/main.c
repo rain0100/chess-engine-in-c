@@ -62,10 +62,9 @@ int king_num_moves[] = {0, 0};
 int board[64] = {0};
 int pieces[13][9];
 int num_pieces_of_type[13] = {0};
-
 int piece_letter_to_num[127] = {0};
 
-char *start_position = "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w";
+char *start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
 
 unsigned long long generate_bitboard(int squares[], int num_squares){
     unsigned long long a = 0ULL;
@@ -177,10 +176,29 @@ void init_fen(char *fen, size_t fen_length){
     }
     i+= 2;
 
-    /*for(; i < fen_length; i++){
+    for (int j = 0; j < 4; j++){
+        rook_num_moves[j] = 1;
+    }
+
+    for(; i < fen_length; i++){
         current = fen[i];
-        printf("current %c\n", current);
-    }*/
+        if (current == 'K'){
+            rook_num_moves[1] = 0;
+        }
+        else if (current == 'Q'){
+            rook_num_moves[0] = 0;
+        }
+        else if (current == 'k'){
+            rook_num_moves[3] = 0;
+        }
+        else if (current == 'q'){
+            rook_num_moves[2] = 0;
+        }
+        if(current == ' '){
+            i++;
+            break;
+        }
+    }
 }
 
 
@@ -1218,9 +1236,27 @@ void print_legal_moves(struct Move* moves, int *numElems){
         printf("%c%d\t%d\n", file, rank, m);
     }
 }
+// this changes a leter num into a 0 to 63 num
+int nota_to_numb(char c, int i){
+    int file_num = c;
+    if (c >= 'A' && c <= 'H'){
+        file_num += 32;
+    }
+    file_num -= 97;
+
+    int square;
+
+    square = (i-1)*8+(7-file_num);
+
+    return square;
+
+}
 
 void run_game(){
     int x;
+    int z;
+    char w;
+    char y;
     struct Move* moves = (struct Move*)calloc(256, sizeof(struct Move));
     int numElems = 0;
     struct Move move;
@@ -1239,11 +1275,23 @@ void run_game(){
             printf("black's turn\n");
         }
         print_legal_moves(moves, &numElems);
-        printf("\nMove: ");
+        printf("\n file 1");
+        w = getchar();
+        printf("rank 1");
         scanf("%d", &x);
+        getchar();
+        printf("file 2");
+        y = getchar();
+        printf("rank 2");
+        scanf("%d", &z);
+        getchar();
+        //scanf("%d", &x);
+        //apply_move(nota_to_numb(w, x), nota_to_numb(y, z), 0);
+        //update_possible_moves(moves, &numElems);
+
         if(x >= 0){
-            move = moves[x];
-            apply_move(move.start, move.end, move.id);
+            //move = moves[x];
+            apply_move(nota_to_numb(w, x), nota_to_numb(y, z), 0);
             update_possible_moves(moves, &numElems);
         }
         else if(x == -1){
@@ -1263,8 +1311,8 @@ void run_game(){
 }
 
 int main(){
-    //run_game();
-    test(4);
+    run_game();
+    //test(5);
     /*struct Move* pItems = (struct Move*)calloc(256, sizeof(struct Move));
     int numElems = 0;
     struct Move move;
