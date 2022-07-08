@@ -66,6 +66,9 @@ int piece_letter_to_num[127] = {0};
 
 char *start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
 
+struct Move *game_possible_moves;
+int num_game_moves;
+
 unsigned long long generate_bitboard(int squares[], int num_squares){
     unsigned long long a = 0ULL;
     for(int i = 0; i < num_squares; i++){
@@ -159,7 +162,7 @@ void init_fen(char *fen, size_t fen_length){
         }
         //placing a piece
         else{
-            p = piece_letter_to_num[current];
+            p = piece_letter_to_num[(int)current];
             board[square] = p;
             bitboards[p] |= (1ULL << square);
             pieces[p][num_pieces_of_type[p]] = square;
@@ -907,7 +910,7 @@ void init_board(){
     init_masks();
 }
 
-bool is_legal_move(int start, int end, int promo, struct Move* moves, int n){
+bool is_legal_move(int start, int end, int promo, struct Move* moves, size_t n){
     struct Move mov;
     for(int i = 0; i < n; i++){
         mov = moves[i];
@@ -981,7 +984,6 @@ void draw_board(){
             printf("|\n");
         }
     }
-    printf("\n");
 }
 
 bool apply_move(int start, int end, int move_id){
@@ -1252,18 +1254,58 @@ int nota_to_numb(char c, int i){
 
 }
 
+bool get_white_check(){
+    return white_check;
+}
+
+bool get_black_check(){
+    return black_check;
+}
+
+void update_game_possible_moves(){
+    update_possible_moves(game_possible_moves, &num_game_moves);
+}
+
+
+bool try_undo_move(){
+    if(num_moves > 0){
+        undo_move();
+        decr_num_moves();
+        flip_turns();
+        return true;
+    }
+    return false;
+}
+
+
+bool is_game_legal_move(int start, int end, int promo){
+    return is_legal_move(start, end, promo, game_possible_moves, num_game_moves);
+}
+
+int* get_board_state(){
+    return board;
+}
+
+void init(){
+    game_possible_moves = (struct Move*)calloc(256, sizeof(struct Move));
+    num_game_moves = 0;
+    init_board();
+}
+
 void run_game(){
+    char str[] = "";
     int x;
     int z;
     char w;
     char y;
-    struct Move* moves = (struct Move*)calloc(256, sizeof(struct Move));
-    int numElems = 0;
-    struct Move move;
-    init_board();
+    int start;
+    int end;
+    int promo;
+    bool undo_successful;
 
 
-    update_possible_moves(moves, &numElems);
+    //update_possible_moves(moves, &numElems);
+    update_game_possible_moves();
     draw_board();
 
 
@@ -1274,36 +1316,54 @@ void run_game(){
         else{
             printf("black's turn\n");
         }
-        print_legal_moves(moves, &numElems);
-        printf("\n file 1");
-        w = getchar();
-        printf("rank 1");
-        scanf("%d", &x);
-        getchar();
-        printf("file 2");
-        y = getchar();
-        printf("rank 2");
-        scanf("%d", &z);
-        getchar();
-        //scanf("%d", &x);
-        //apply_move(nota_to_numb(w, x), nota_to_numb(y, z), 0);
-        //update_possible_moves(moves, &numElems);
+        print_legal_moves(game_possible_moves, &num_game_moves);
 
-        if(x >= 0){
-            //move = moves[x];
-            apply_move(nota_to_numb(w, x), nota_to_numb(y, z), 0);
-            update_possible_moves(moves, &numElems);
+        //get input from user in notation (e.g. b1c3)
+        printf("Make a move: ");
+        gets(str);
+        //if empty input, set start to -1 to indicate undo move
+        if(strlen(str) == 0){
+            start = -1;
+            end = -1;
         }
-        else if(x == -1){
-            if(num_moves > 0){
-                printf("undo\n");
-                undo_move();
-                decr_num_moves();
-                flip_turns();
-                update_possible_moves(moves, &numElems);
+        //otherwise, set start and end square (0 to 63) to files and ranks
+        else{
+            w = str[0];
+            x = (int)str[1] - 48;
+            y = str[2];
+            z = (int)str[3] - 48;
+            //printf("%c %d %c %d\n", w, x, y, z);
+            printf("\n");
+            start = nota_to_numb(w, x);
+            end = nota_to_numb(y, z);
+        }
+        //promotion is unsupported at the moment
+        promo = 0;
+
+        //if start and end squares within bounds
+        if(0 <= start && start < 64 && 0 <= end && end < 64){
+            //if the move is in the list of legal moves
+            if(is_legal_move(start, end, promo, game_possible_moves, num_game_moves)){
+                //make the move on the board
+                apply_move(start, end, 0);
+                update_possible_moves(game_possible_moves, &num_game_moves);
             }
+            //otherwise the move is illegal
             else{
-                printf("Nothing to undo\n");
+                printf("Illegal\n\n");
+            }
+        }
+        //if we are undoing a move
+        else{
+            undo_successful = try_undo_move();
+            //if there is a move to undo
+            if(undo_successful){
+                printf("Undo\n\n");
+                update_possible_moves(game_possible_moves, &num_game_moves);
+            }
+            //there are no moves to undo
+            else{
+                printf("Nothing to undo\n\n");
             }
         }
         draw_board();
@@ -1311,17 +1371,8 @@ void run_game(){
 }
 
 int main(){
-    run_game();
-    //test(5);
-    /*struct Move* pItems = (struct Move*)calloc(256, sizeof(struct Move));
-    int numElems = 0;
-    struct Move move;
-    move.start = 5;
-    append_move(pItems, move, &numElems);
-    move.end = 3;
-    append_move(pItems, move, &numElems);
-    for(int i = 0; i < 256; i++){
-        printf("%d %d %d\n", pItems[i].start, pItems[i].end, pItems[i].id);
-    }*/
+    //init();
+    //run_game();
+    test(5);
     return 0;
 }
