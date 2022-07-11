@@ -64,7 +64,7 @@ int pieces[13][9];
 int num_pieces_of_type[13] = {0};
 int piece_letter_to_num[127] = {0};
 
-char *start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
+char *start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq"; //"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ";
 
 struct Move *game_possible_moves;
 int num_game_moves;
@@ -426,7 +426,7 @@ unsigned long long span_piece(unsigned long long mask, int i, unsigned long long
     squares = remove_span_warps(squares, i);
     squares = squares & mask;
     if(squares & king_bb){
-        blocking_squares = 1ULL << i;
+        blocking_squares |= 1ULL << i;
     }
     return squares;
 }
@@ -474,16 +474,23 @@ bool is_black_piece(int piece){
 }
 
 unsigned long long sliding_piece(unsigned long long mask, int i, unsigned long long blockers, bool rook_moves, bool bishop_moves, unsigned long long king_bb){
+    // squares this piece threatens, as a bitboard
     unsigned long long squares = 0ULL;
+    // bitboard representing this piece's location
     unsigned long long slider = 1ULL << i;
+    // int 0-63 of which square the enemy king is on
     int king_square = 64 - leading_zeros(king_bb) - 1;
+    // whether or not the king is white
     bool king_color = is_white_piece(get_piece(king_square));
 
+    // array of bitboards, each representing a file/rank/diagonal this piece can move along
     unsigned long long directions[4] = { 0ULL };
+    // if it moves like a rook, it can move along the rank and file it's on
     if(rook_moves){
         directions[0] = rank[get_rank(i) + 1];
         directions[1] = file[8 - get_file(i)];
     }
+    // if it moves like a bishop, it can move along the left and right diagonals it's on
     if(bishop_moves){
         directions[2] = l_diag[get_l_diag(i)];
         directions[3] = r_diag[get_r_diag(i)];
@@ -491,28 +498,46 @@ unsigned long long sliding_piece(unsigned long long mask, int i, unsigned long l
 
     unsigned long long d = 0ULL;
     unsigned long long new_squares = 0ULL;
+    // bitboard with ones on a straight line from this piece to the enemy king
     unsigned long long king_line = 0ULL;
+    // bitboard possible pinning line
     unsigned long long pos_pin = 0ULL;
+    // number of pieces along the possible pinning line
     int counter = 0;
+    // location of up to 2 pieces on the possible pinning line
+    // only one piece can be pinned, but 2 pawns can be pinned w/ en passant
     int pin_loc[] = {-1, -1};
 
+    // for each direction this piece can move along
     for(int k = 0; k < 4; k++){
+        // set d to this current direction
         d = directions[k];
+        // if it can't move in this direction, continue to the next direction
         if(d == 0ULL){
             continue;
         }
+        // get a bitboard of squares threatened in this direction
         new_squares = line_attack(blockers, d, slider) & mask;
+        // add them to the bitboard of squares this piece threatens
         squares |= new_squares;
+        // if the enemy king is in the line of sight of this piece in this direction
         if(new_squares & king_bb){
-            blocking_squares = line_between_pieces(d, i, king_square);
+            //printf("%d looking at king in direction %d\n", i, k);
+            blocking_squares |= line_between_pieces(d, i, king_square);
             blocking_squares |= slider;
         }
+        // if this function was called with the king_bb parameter (checking for pins)
         else if(king_square >= 0){
+            // draw a line from this piece to the enemy king
             king_line = line_between_pieces(d, i, king_square);
+            // if there is no such line, continue. Piece doesn't pin in this direction
             if(!king_line){
                 continue;
             }
+            // pieces on the line between the piece and the king could possibly be pinned
             pos_pin = blockers & king_line;
+
+            // count and store the first two pieces on the king line
             counter = 0;
             pin_loc[0] = -1;
             pin_loc[1] = -1;
@@ -525,25 +550,41 @@ unsigned long long sliding_piece(unsigned long long mask, int i, unsigned long l
                     pin_loc[counter - 1] = i;
                 }
             }
+            // if there is only one piece on the pinning line
             if(counter == 1){
                 bool pinned_piece_color = is_white_piece(get_piece(pin_loc[0]));
+                // if the piece is the same color as the king, consider it pinned
                 if(pinned_piece_color == king_color){
+                    // pinned piece may capture the piece that delivers the pin
                     king_line = king_line | slider;
+                    // pinned piece is restricted to only move along the pinning line
                     pinning_squares[pin_loc[0]] = king_line;
                 }
             }
+            // if there are two pieces on this pinning line
             else if(counter == 2){
                 int p1 = get_piece(pin_loc[0]);
                 int p2 = get_piece(pin_loc[1]);
+                // and they are opposite colored pawns
                 if((p1 == 1 && p2 == 7) || (p1 == 7 && p2 == 1)){
+                    // and this isn't the first move of the game
                     if(num_moves > 0){
+                        // get the previous move
                         struct Move mov = move_list[num_moves - 1];
+                        // and the previous move was a double pawn push
                         if(mov.id == 13){
-                            if(is_white_piece(get_piece(mov.end))){
-                                en_passant_pinned = mov.end - 8;
-                            }
-                            else{
-                                en_passant_pinned = mov.end + 8;
+                            // we only care about this en passant pinning situation horizontally
+                            // everything else is handled via regular pins
+                            if(get_rank(pin_loc[0]) == get_rank(pin_loc[1])){
+                                // if it's a white pawn
+                                if(is_white_piece(get_piece(mov.end))){
+                                    // mark that it is illegal for white to capture en passant on that square
+                                    en_passant_pinned = mov.end - 8;
+                                }
+                                else{
+                                    // mark that it is illegal for black to capture en passant on that square
+                                    en_passant_pinned = mov.end + 8;
+                                }
                             }
                         }
                     }
@@ -729,10 +770,12 @@ unsigned long long unsafe_for_white(){
     // threaten to capture right
     mask = l_shift(bitboards[7], -8 - 1) & ~file[1];
     unsafe |= mask;
+    blocking_squares |= r_shift((king & mask), -8 - 1);
 
     // threaten to capture left
     mask = l_shift(bitboards[7], -8 + 1) & ~file[8];
     unsafe |= mask;
+    blocking_squares |= r_shift((king & mask), -8 + 1);
 
     // knight
     for(int i = 0; i < num_pieces_of_type[8]; i++){
@@ -778,10 +821,12 @@ unsigned long long unsafe_for_black(){
     // threaten to capture right
     mask = l_shift(bitboards[1], 8 - 1) & ~file[1];
     unsafe |= mask;
+    blocking_squares |= r_shift((king & mask), 8 - 1);
 
     // threaten to capture left
     mask = l_shift(bitboards[1], 8 + 1) & ~file[8];
     unsafe |= mask;
+    blocking_squares |= r_shift((king & mask), 8 + 1);
 
     // knight
     for(int i = 0; i < num_pieces_of_type[2]; i++){
@@ -1188,9 +1233,9 @@ char file_letter(int n){
     return letter[n];
 }
 
-int perft_test(int depth){
+unsigned long long perft_test(int depth){
     if(depth == 0){
-        return 1;
+        return 1ULL;
     }
 
     struct Move* moves = (struct Move*)calloc(256, sizeof(struct Move));
@@ -1198,7 +1243,7 @@ int perft_test(int depth){
 
     update_possible_moves(moves, &numElems);
 
-    int num_positions = 0;
+    unsigned long long num_positions = 0ULL;
     struct Move move;
 
     for(int i = 0; i < numElems; i++){
@@ -1213,12 +1258,6 @@ int perft_test(int depth){
     free(moves);
 
     return num_positions;
-}
-
-
-void test(int i){
-    init_board();
-    printf("Perft result: %d\n", perft_test(i));
 }
 
 void print_legal_moves(struct Move* moves, int *numElems){
@@ -1371,8 +1410,8 @@ void run_game(){
 }
 
 int main(){
-    //init();
-    //run_game();
-    test(5);
+    init();
+    run_game();
+    //printf("Perft: %llu\n", perft_test(3));
     return 0;
 }
