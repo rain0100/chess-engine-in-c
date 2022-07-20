@@ -12,6 +12,9 @@ remove_piece has nested for loops (pieces array refactor?)
 only recalculating the legal moves that actually are affected
 
 
+store the legal moves per piece indexed by square as a board
+
+list of 64 move list
 */
 
 struct Move {
@@ -1764,6 +1767,15 @@ struct Move seach_moves(int depth){
     return best_move;
 }
 
+// this is going to recalulate the legale moves for a given piece
+void update_piece_moves(int square){
+    int piece_type = get_piece(square);
+    if (piece_type == 4){
+        return
+    }
+
+}
+
 void calc_eng_move(int depth){
     engine_move = seach_moves(depth);
 }
@@ -1803,7 +1815,8 @@ int main(){
     //printf("%d %d %d", test1.start, test1.end, test1.eval);
     //h3_perft(7);
     //run_game();
-    printf("Perft: %llu\n", detailed_perft(7));
+    //printf("Perft: %llu\n", detailed_perft(7));
+    printf("%llu", perft_test(5));
     /*apply_move(nota_to_numb('g', 2), nota_to_numb('g', 3), 0);
     apply_move(nota_to_numb('h', 7), nota_to_numb('h', 6), 0);
     apply_move(nota_to_numb('f', 1), nota_to_numb('g', 2), 0);
