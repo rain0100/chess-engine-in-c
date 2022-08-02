@@ -31,7 +31,7 @@ struct Move engine_move;
 
 // this is the pos_eval gride
 
-int square_incentive[12][64] =
+int square_incentive[13][64] =
 {
 { 0,   0,   0,   0,   0,   0,   0,   0,
    0,   0,   0,   0,   0,   0,   0,   0,
@@ -85,7 +85,7 @@ int square_incentive[12][64] =
   -5,   0,   5,   5,   5,   5,   0,  -5,
  -10,   0,   5,   5,   5,   5,   0, -10,
  -10,   0,   0,   0,   0,   0,   0, -10,
- -20, -10, -10,  -5,  -5, -10, -10, -20,},
+ -20, -10, -10,  -5,  -5, -10, -10, -20},
 
 {  20,  30,  10,   0,   0,  10,  30,  20,
   20,  20,   0,   0,   0,   0,  20,  20,
@@ -96,7 +96,7 @@ int square_incentive[12][64] =
  -30, -40, -40, -50, -50, -40, -40, -30,
  -30, -40, -40, -50, -50, -40, -40, -30},
 
- {   0,   0,   0,   0,   0,   0,   0,   0,
+ { 0,   0,   0,   0,   0,   0,   0,   0,
  -50, -50, -50, -50, -50, -50, -50, -50,
  -10, -10, -20, -30, -30, -20, -10, -10,
   -5,  -5, -10, -25, -25, -10,  -5,  -5,
@@ -1179,6 +1179,8 @@ void remove_piece(int piece, int square){
     }
     unsigned long long remove_mask = ~(1ULL << square);
     bitboards[piece] = bitboards[piece] & remove_mask;
+    mat_eval -= values[piece];
+    pos_eval -= square_incentive[piece][square];
 }
 
 void add_piece(int piece, int square){
@@ -1187,6 +1189,8 @@ void add_piece(int piece, int square){
     num_pieces_of_type[piece]++;
     unsigned long long add_mask = 1ULL << square;
     bitboards[piece] = bitboards[piece] | add_mask;
+    mat_eval += values[piece];
+    pos_eval += square_incentive[piece][square];
 }
 
 void incr_num_moves(){
@@ -1304,12 +1308,10 @@ bool apply_move(int start, int end, int move_id){
     if(captured_piece > 0){
         remove_piece(captured_piece, end);
         //check the value of the peace
-        mat_eval = mat_eval - values[captured_piece];
     }
-    // this is for protion
-    if((move_id) > 0){
+    // this is for promotion
+    if(move_id > 0){
         add_piece(move_id, end);
-        mat_eval = mat_eval + values[move_id] - values[moved_piece];
     }
     else{
         add_piece(moved_piece, end);
@@ -1333,13 +1335,11 @@ bool apply_move(int start, int end, int move_id){
             if(m == 13 && moved_piece == 1 && ep_pawn == 7 && end - e == 8){
                 remove_piece(ep_pawn, e);
                 new_m = 14;
-                mat_eval = mat_eval - values[7];
             }
             // black capturing en passant
             else if(m == 13 && moved_piece == 7 && ep_pawn == 1 && end - e == -8){
                 remove_piece(ep_pawn, e);
                 new_m = 14;
-                mat_eval = mat_eval - values[1];
             }
         }
     }
@@ -1373,7 +1373,6 @@ void undo_move(){
     // last move was a capture
     if(capture > 0){
         add_piece(capture, end);
-        mat_eval = mat_eval + values[capture];
     }
     if(move_id == 0){
     }
@@ -1382,11 +1381,9 @@ void undo_move(){
         remove_piece(move_id, start);
         if(is_white){
             add_piece(1, start);
-            mat_eval = mat_eval - values[move_id] + values[1];
         }
         else{
             add_piece(7, start);
-            mat_eval = mat_eval - values[move_id] + values[7];
         }
     }
     // last move was double pawn push
@@ -1396,11 +1393,9 @@ void undo_move(){
     else if(move_id == 14){
         if(is_white){
             add_piece(7, end - 8);
-            mat_eval = mat_eval + values[7];
         }
         else{
             add_piece(1, end + 8);
-            mat_eval = mat_eval + values[1];
         }
     }
     // last move was castling
@@ -1704,7 +1699,7 @@ void run_game(){
     }
 }
 int static_eval(){
-    return mat_eval;
+    return mat_eval + pos_eval;
 }
 
 // version of search_moves that returns a struct Move
@@ -1837,6 +1832,10 @@ int get_num_possible_moves(){
 
 int get_mat_eval(){
     return mat_eval;
+}
+
+int get_pos_eval(){
+    return pos_eval;
 }
 
 
