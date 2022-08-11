@@ -1776,6 +1776,7 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
     struct Move move;
 
     if(numElems == 0){
+        free(moves);
         if(white_check){
             return INT_MIN;
         }
@@ -1805,6 +1806,7 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
                 break;
             }
         }
+        free(moves);
         return maxEval;
     }
 
@@ -1828,6 +1830,7 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
                 break;
             }
         }
+        free(moves);
         return minEval;
     }
 }
