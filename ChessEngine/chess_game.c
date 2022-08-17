@@ -1743,7 +1743,7 @@ void print_move(struct Move m){
 
         file = file_letter(7 - get_file(e));
         rank = get_rank(e) + 1;
-        printf("%c%d\n", file, rank);
+        printf("%c%d", file, rank);
 
 }
 
@@ -1816,6 +1816,10 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
             print_move(move);
             apply_move(move.start, move.end, move.id);
             int evaluation = search_moves_pruning(depth - 1, depth, alpha, beta, false);
+            if (evaluation > 10000){
+                printf("#");
+            }
+            print("\n");
             undo_move();
             decr_num_moves();
             flip_turns();
@@ -1844,6 +1848,10 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
             print_move(move);
             apply_move(move.start, move.end, move.id);
             int evaluation = search_moves_pruning(depth - 1, depth, alpha, beta, true);
+            if (evaluation < -10000){
+                printf("#");
+            }
+            print("\n");
             undo_move();
             decr_num_moves();
             flip_turns();
