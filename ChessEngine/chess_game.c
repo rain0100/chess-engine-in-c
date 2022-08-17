@@ -1793,14 +1793,17 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
     if(numElems == 0){
         free(moves);
         if(white_check){
+            printf("#\n");
             return INT_MIN + start_depth - depth;
         }
         else if(black_check){
+            printf("#\n");
             return INT_MAX - start_depth + depth;
         }
         printf("Stalemate at depth %d\n", start_depth - depth);
         return 0;
     }
+    printf("\n");
 
     if(depth == 0){
         return static_eval();
@@ -1817,10 +1820,6 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
             print_move(move);
             apply_move(move.start, move.end, move.id);
             int evaluation = search_moves_pruning(depth - 1, depth, alpha, beta, false);
-            if (evaluation > 10000){
-                printf("#");
-            }
-            print("\n");
             undo_move();
             decr_num_moves();
             flip_turns();
@@ -1850,10 +1849,6 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
             print_move(move);
             apply_move(move.start, move.end, move.id);
             int evaluation = search_moves_pruning(depth - 1, depth, alpha, beta, true);
-            if (evaluation < -10000){
-                printf("#");
-            }
-            print("\n");
             undo_move();
             decr_num_moves();
             flip_turns();
