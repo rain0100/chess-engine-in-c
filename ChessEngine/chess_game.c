@@ -1783,7 +1783,24 @@ int search_moves(int depth, int start_depth){
     return bestEvaluation;
 }
 
-int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool player){
+char* move_to_notation(struct Move move){
+    char str[40];
+    int s = move.start;
+    int e = move.end;
+    //int m = move.id;
+
+    char file = file_letter(7 - get_file(s));
+    int rank = get_rank(s) + 1;
+
+    char f = file_letter(7 - get_file(e));
+    int r = get_rank(e) + 1;
+
+    sprintf(str, "%c%c%d%c%d", piece_letter(get_piece(s), true), file, rank, f, r);
+
+    return str;
+}
+
+int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool player, char* line){
     struct Move* moves = (struct Move*)malloc(80 * sizeof(struct Move));
     int numElems = 0;
 
@@ -1819,7 +1836,7 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
             printf("%d", depth);
             print_move(move);
             apply_move(move.start, move.end, move.id);
-            int evaluation = search_moves_pruning(depth - 1, depth, alpha, beta, false);
+            int evaluation = search_moves_pruning(depth - 1, depth, alpha, beta, false, strcat(line, move_to_notation(move)));
             undo_move();
             decr_num_moves();
             flip_turns();
@@ -1869,7 +1886,7 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
 }
 
 int calc_eng_move(int depth){
-    return search_moves_pruning(depth, depth, INT_MIN, INT_MAX, false);
+    return search_moves_pruning(depth, depth, INT_MIN, INT_MAX, false, "");
 
 }
 int get_eng_move_start(){
