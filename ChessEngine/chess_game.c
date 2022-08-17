@@ -1732,10 +1732,10 @@ void update_piece_moves(int square){
 
 }
 
-void print_move(struct Move m){
+void print_move(struct Move move){
         int s = move.start;
         int e = move.end;
-        int m = move.id;
+        //int m = move.id;
 
         char file = file_letter(7 - get_file(s));
         int rank = get_rank(s) + 1;
@@ -1813,6 +1813,7 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
             for (int j = 0; j < depth; j++){
                 printf("\t");
             }
+            printf("%d", depth);
             print_move(move);
             apply_move(move.start, move.end, move.id);
             int evaluation = search_moves_pruning(depth - 1, depth, alpha, beta, false);
@@ -1841,6 +1842,7 @@ int search_moves_pruning(int depth, int start_depth, int alpha, int beta, bool p
             for (int j = 0; j < depth; j++){
                 printf("\t");
             }
+            printf("%d", depth);
             print_move(move);
             apply_move(move.start, move.end, move.id);
             int evaluation = search_moves_pruning(depth - 1, depth, alpha, beta, true);
